@@ -1,0 +1,4 @@
+venv/
+yolov11_vehicle_and_ambulance_detection (1).ipynb
+results/
+__pycache__/

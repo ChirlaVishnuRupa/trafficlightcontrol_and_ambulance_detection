@@ -1,0 +1,8 @@
+Ambulance
+Bus
+Car
+Mini Bus
+Three Wheeler
+Truck Type1
+Truck Type2
+Two Wheeler
