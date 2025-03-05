@@ -55,52 +55,45 @@ def read_detections():
 # Function to update GUI labels
 def update_display(index, status, time_allocated, vehicle_counts):
     if 0 <= index < len(frame_labels):
-        color = "green" if status == "GO" else "green" if status == "AMBULANCE" else "red"
+        color = "green" if status == "GO" or status == "AMBULANCE" else "red"
         frame_labels[index].configure(text=f"{status}\nVehicles: {vehicle_counts[index]}\nTime: {time_allocated}s", fg_color=color)
         root.update()
 
-def start_traffic_simulation():
-    ambulance_processed = False  # Flag to track if the ambulance frame has been processed
 
+def start_traffic_simulation():
     while True:
         vehicle_counts, ambulance_detected = read_detections()
+        
+        # Find all ambulance frames
+        ambulance_frames = [i for i in range(IMAGE_COUNT) if ambulance_detected[i]]
 
-        # Check if any frame has an ambulance
-        ambulance_frame = next((i for i in range(IMAGE_COUNT) if ambulance_detected[i]), None)
+        if ambulance_frames:
+            for frame in ambulance_frames:
+                # Stop all frames first
+                for j in range(IMAGE_COUNT):
+                    update_display(j, "STOP", 0, vehicle_counts)
+                
+                # Allocate time for the ambulance frame
+                ambulance_time = max(5, min(vehicle_counts[frame] * 2, 30))
+                update_display(frame, "AMBULANCE", ambulance_time, vehicle_counts)
 
-        # If an ambulance is detected and not yet processed
-        if ambulance_frame is not None and not ambulance_processed:
-            for j in range(IMAGE_COUNT):
-                update_display(j, "STOP", 0, vehicle_counts)  # Stop all frames
-
-            # Dynamically allocate time for the ambulance frame
-            ambulance_time = max(5, min(vehicle_counts[ambulance_frame] * 2, 30))
-
-            update_display(ambulance_frame, "AMBULANCE", ambulance_time, vehicle_counts)
-
-            # Countdown for the ambulance frame
-            for t in range(ambulance_time, 0, -1):
-                frame_labels[ambulance_frame].configure(
-                    text=f"AMBULANCE\nVehicles: {vehicle_counts[ambulance_frame]}\nTime: {t}s",
-                    fg_color="green"
-                )
-                root.update()
-                time.sleep(1)
-
-            update_display(ambulance_frame, "STOP", 0, vehicle_counts)  # Stop the ambulance frame
-            
-            ambulance_processed = True  # Mark as processed
-            continue  # Skip the rest of the cycle
-
-        # Reset ambulance flag when no ambulance is detected
-        if ambulance_frame is None:
-            ambulance_processed = False
-
+                # Countdown for the ambulance frame
+                for t in range(ambulance_time, 0, -1):
+                    frame_labels[frame].configure(
+                        text=f"AMBULANCE\nVehicles: {vehicle_counts[frame]}\nTime: {t}s",
+                        fg_color="green"
+                    )
+                    root.update()
+                    time.sleep(1)
+                
+                # Stop the ambulance frame after processing
+                update_display(frame, "STOP", 0, vehicle_counts)
+        
         # Regular cycle for non-ambulance frames
         for i in range(IMAGE_COUNT):
-            if i == ambulance_frame:  # **Skip the ambulance frame in this cycle**
-                continue
-
+            if i in ambulance_frames:
+                continue  # Skip frames that already processed ambulances
+            
             time_allocated = max(5, min(vehicle_counts[i] * 2, 30))
             update_display(i, "GO", time_allocated, vehicle_counts)
 
@@ -112,8 +105,9 @@ def start_traffic_simulation():
                 )
                 root.update()
                 time.sleep(1)
+            
+            update_display(i, "STOP", 0, vehicle_counts)
 
-            update_display(i, "STOP", 0, vehicle_counts)  # Stop the frame after countdown
 
 # Function to show resultant frames
 def show_resultant_frames():
@@ -147,6 +141,7 @@ def show_resultant_frames():
         cv2.imshow(f"Resultant Frame {i+1}", img)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
+
 
 # Control Panel
 btn_show_frames = ctk.CTkButton(root, text="Show Resultant Frames", command=show_resultant_frames)
